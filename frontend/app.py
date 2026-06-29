@@ -194,19 +194,33 @@ def search_restaurants():
 @app.route("/api/v1/recommendations")
 def get_recommendations():
     """
-    Returns pre-computed ranked recommendations.
-    Falls back to /restaurants/search results when the pipeline hasn't run yet.
+    Returns ranked recommendations, personalized when a user_id is supplied.
 
     Query params:
-        min_rating – filter by avg_predicted_score
-        cuisine    – filter by cuisine type
+        user_id    – look up saved preferences for this user (optional)
+        min_rating – override minimum avg_predicted_score (optional)
+        cuisine    – override cuisine type filter (optional)
         limit      – max results (default 20)
     """
     db = get_mongo()
 
+    user_id    = request.args.get("user_id", "").strip()
     min_rating = request.args.get("min_rating", type=float)
-    cuisine    = request.args.get("cuisine", "").strip().lower()
     limit      = request.args.get("limit", default=20, type=int)
+
+    # cuisine param accepts comma-separated values: ?cuisine=italian,sushi
+    raw_cuisine = request.args.get("cuisine", "").strip().lower()
+    cuisines = [c.strip() for c in raw_cuisine.split(",") if c.strip()] if raw_cuisine else []
+
+    # Load saved user preferences; query params take priority over stored prefs
+    if user_id:
+        pref_doc = db["user_preferences"].find_one({"user_id": user_id}, {"_id": 0})
+        if pref_doc:
+            prefs = pref_doc.get("preferences", {})
+            if min_rating is None and prefs.get("min_rating"):
+                min_rating = prefs["min_rating"]
+            if not cuisines and prefs.get("cuisine_types"):
+                cuisines = [c.lower() for c in prefs["cuisine_types"]]
 
     rec_doc = db["recommendations"].find_one({"user_id": "global"}, {"_id": 0})
 
@@ -219,26 +233,38 @@ def get_recommendations():
                 if r.get("avg_predicted_score", 0) >= min_rating
             ]
 
-        # Enrich with types + apply cuisine filter in one pass
+        # Enrich with types + apply multi-cuisine OR-match filter in one pass
         place_ids = [r["place_id"] for r in recommendations]
         rest_meta = {
-            doc["place_id"]: doc.get("types", [])
+            doc["place_id"]: doc
             for doc in db["restaurants"].find(
-                {"place_id": {"$in": place_ids}}, {"place_id": 1, "types": 1}
+                {"place_id": {"$in": place_ids}}, {"place_id": 1, "types": 1, "rating": 1}
             )
         }
         enriched = []
         for r in recommendations:
-            types = rest_meta.get(r["place_id"], [])
-            if cuisine and not any(cuisine in t.lower() for t in types):
-                continue
-            enriched.append({**r, "types": types})
+            meta  = rest_meta.get(r["place_id"], {})
+            types = meta.get("types", [])
+            if cuisines:
+                types_lower = [t.lower() for t in types]
+                if not any(
+                    preferred in restaurant_type
+                    for preferred in cuisines
+                    for restaurant_type in types_lower
+                ):
+                    continue
+            enriched.append({**r, "types": types, "google_rating": meta.get("rating")})
 
         return jsonify({
             "count": len(enriched[:limit]),
             "recommendations": enriched[:limit],
             "generated_at": rec_doc.get("generated_at"),
             "source": "precomputed",
+            "personalized_for": user_id or None,
+            "active_filters": {
+                "cuisines": cuisines,
+                "min_rating": min_rating,
+            },
         })
 
     # ── Fallback: pipeline hasn't run yet — build live from MongoDB ──

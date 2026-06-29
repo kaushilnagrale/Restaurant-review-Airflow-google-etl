@@ -3,27 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Intelligence</title>
+    <title>Restaurant Intelligence — AI-Powered Reviews</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<header>
-    <div class="container">
-        <h1>Restaurant Intelligence</h1>
-        <p class="subtitle">AI-Powered Reviews &amp; Recommendations</p>
+<!-- ── Hero ─────────────────────────────────────────────── -->
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content container">
+        <h1>Discover <span>The Best</span><br>Restaurants Near You</h1>
+        <p class="hero-subtitle">BERT sentiment analysis meets real-time Google reviews — surfacing what star ratings miss.</p>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-value" id="stat-restaurants">0</span>
+                <span class="hero-stat-label">Restaurants</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-value" id="stat-reviews">0</span>
+                <span class="hero-stat-label">Raw Reviews</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-value" id="stat-processed">0</span>
+                <span class="hero-stat-label">NLP Processed</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-value">BERT</span>
+                <span class="hero-stat-label">AI Model</span>
+            </div>
+        </div>
     </div>
-</header>
+</section>
+
+<!-- ── Status Bar ────────────────────────────────────────── -->
+<div class="status-bar" id="status-bar">
+    <span class="status-dot"></span>
+    <span id="status-text">Checking pipeline status&#8230;</span>
+</div>
 
 <main class="container">
 
-    <!-- Status Bar -->
-    <div class="status-bar" id="status-bar">
-        <span class="status-dot"></span>
-        <span id="status-text">Checking pipeline status&#8230;</span>
-    </div>
-
-    <!-- ── Single unified control panel ── -->
+    <!-- ── Control Panel ─────────────────────────────────── -->
     <section class="card control-panel">
         <div class="panel-row">
 
@@ -36,7 +57,7 @@
                         <input id="search-q" type="text" placeholder="Search restaurant name&#8230;" />
                     </div>
                     <div class="filter-group">
-                        <label for="min-rating">Min Rating</label>
+                        <label for="min-rating">Min NLP</label>
                         <select id="min-rating">
                             <option value="">Any</option>
                             <option value="3">3+</option>
@@ -58,6 +79,29 @@
                         </select>
                     </div>
                     <div class="filter-group">
+                        <label for="sort-by">Sort by</label>
+                        <select id="sort-by">
+                            <option value="nlp">NLP Score</option>
+                            <option value="ai">AI Score</option>
+                            <option value="google">Google ★</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>&nbsp;</label>
+                        <button id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction">▼ Desc</button>
+                    </div>
+                    <div class="filter-group">
+                        <label for="show-count">Show</label>
+                        <select id="show-count">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="999">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>&nbsp;</label>
                         <button id="search-btn" onclick="search()">Search</button>
                     </div>
                 </div>
@@ -76,23 +120,19 @@
                     </div>
                     <div class="filter-group coord-field">
                         <label for="loc-lat">Lat</label>
-                        <input id="loc-lat" type="number" step="0.0001"
-                               value="33.4255" />
+                        <input id="loc-lat" type="number" step="0.0001" value="33.4255" />
                     </div>
                     <div class="filter-group coord-field">
                         <label for="loc-lng">Lng</label>
-                        <input id="loc-lng" type="number" step="0.0001"
-                               value="-111.9400" />
+                        <input id="loc-lng" type="number" step="0.0001" value="-111.9400" />
                     </div>
                     <div class="filter-group">
-                        <button id="gps-btn" onclick="detectGPS()" title="Use device GPS">
-                            &#9673; GPS
-                        </button>
+                        <label>&nbsp;</label>
+                        <button id="gps-btn" onclick="detectGPS()" title="Use device GPS">&#9673; GPS</button>
                     </div>
                     <div class="filter-group">
-                        <button id="trigger-btn" onclick="triggerPipeline()">
-                            Run Pipeline
-                        </button>
+                        <label>&nbsp;</label>
+                        <button id="trigger-btn" onclick="triggerPipeline()">Run Pipeline</button>
                     </div>
                 </div>
                 <div id="trigger-status" class="trigger-status hidden"></div>
@@ -141,7 +181,7 @@
 
 <footer>
     <div class="container">
-        Powered by BERT Sentiment Analysis &middot; Refreshed nightly via Apache Airflow
+        Built by <strong>Kaushil Nagrale</strong> &middot; Powered by <strong>BERT</strong> Sentiment Analysis &middot; <strong>Apache Spark</strong> ETL &middot; <strong>Apache Airflow</strong>
     </div>
 </footer>
 
@@ -238,12 +278,48 @@ function showTriggerStatus(msg, type) {
     el.classList.remove('hidden');
 }
 
+/* Sort direction toggle */
+var sortAsc = false;
+
+function toggleSortDir() {
+    sortAsc = !sortAsc;
+    var btn = document.getElementById('sort-dir-btn');
+    btn.textContent = sortAsc ? '▲ Asc' : '▼ Desc';
+    search();
+}
+
+/* Sort helper */
+function sortResults(items, sortBy, isSearch) {
+    var arr = items.slice();
+    var dir = sortAsc ? 1 : -1;
+    if (sortBy === 'nlp') {
+        arr.sort(function(a, b) {
+            var sa = isSearch ? (a.avg_nlp_score || 0) : (a.avg_predicted_score || 0);
+            var sb = isSearch ? (b.avg_nlp_score || 0) : (b.avg_predicted_score || 0);
+            return dir * (sa - sb);
+        });
+    } else if (sortBy === 'ai') {
+        arr.sort(function(a, b) {
+            return dir * ((a.recommendation_score || 0) - (b.recommendation_score || 0));
+        });
+    } else if (sortBy === 'google') {
+        arr.sort(function(a, b) {
+            var sa = isSearch ? (a.rating || 0) : (a.google_rating || 0);
+            var sb = isSearch ? (b.rating || 0) : (b.google_rating || 0);
+            return dir * (sa - sb);
+        });
+    }
+    return arr;
+}
+
 /* Search */
 async function search() {
     const btn     = document.getElementById('search-btn');
     const q       = document.getElementById('search-q').value.trim();
     const rating  = document.getElementById('min-rating').value;
     const cuisine = document.getElementById('cuisine').value;
+    const limit   = document.getElementById('show-count').value;
+    const sortBy  = document.getElementById('sort-by').value;
 
     btn.textContent = 'Searching...';
     btn.disabled    = true;
@@ -251,16 +327,18 @@ async function search() {
 
     try {
         if (q || rating || cuisine) {
-            var url = API + '/restaurants/search?limit=30';
-            if (q)       url += '&q='          + encodeURIComponent(q);
-            if (rating)  url += '&min_rating='  + rating;
-            if (cuisine) url += '&cuisine='     + encodeURIComponent(cuisine);
+            var url = API + '/restaurants/search?limit=' + limit;
+            if (q)       url += '&q='       + encodeURIComponent(q);
+            if (rating)  url += '&min_nlp=' + rating;
+            if (cuisine) url += '&cuisine=' + encodeURIComponent(cuisine);
             const res  = await fetch(url);
             const data = await res.json();
+            data.restaurants = sortResults(data.restaurants || [], sortBy, true);
             renderRestaurantSearch(data);
         } else {
-            const res  = await fetch(API + '/recommendations?limit=20');
+            const res  = await fetch(API + '/recommendations?limit=' + limit);
             const data = await res.json();
+            data.recommendations = sortResults(data.recommendations || [], sortBy, false);
             renderRecommendations(data);
         }
     } catch (e) {
@@ -296,14 +374,13 @@ function renderRecommendations(data) {
 
     document.getElementById('restaurant-grid').innerHTML = recs.map(function(r, i) {
         return restaurantCard({
-            rank:          r.rank || i + 1,
+            rank:          i + 1,
             place_id:      r.place_id,
             name:          r.restaurant_name || 'Unknown',
             nlp_score:     r.avg_predicted_score,
-            sec_score:     r.recommendation_score,
-            sec_label:     'Rec. Score',
+            ai_score:      r.recommendation_score,
+            google_rating: r.google_rating,
             review_count:  r.review_count,
-            positive_ratio:r.positive_ratio,
             types:         r.types || [],
         });
     }).join('');
@@ -324,27 +401,26 @@ function renderRestaurantSearch(data) {
 
     document.getElementById('restaurant-grid').innerHTML = restaurants.map(function(r, i) {
         return restaurantCard({
-            rank:           i + 1,
-            place_id:       r.place_id,
-            name:           r.name || 'Unknown',
-            nlp_score:      r.avg_nlp_score,
-            sec_score:      r.rating,
-            sec_label:      'Google &#9733;',
-            review_count:   r.nlp_review_count || r.total_ratings || 0,
-            positive_ratio: r.positive_ratio,
-            types:          r.types || [],
+            rank:         i + 1,
+            place_id:     r.place_id,
+            name:         r.name || 'Unknown',
+            nlp_score:    r.avg_nlp_score,
+            sec_score:    r.rating,
+            sec_label:    'Google &#9733;',
+            sec_title:    'Google star rating',
+            review_count: r.nlp_review_count || r.total_ratings || 0,
+            types:        r.types || [],
         });
     }).join('');
 }
 
 function restaurantCard(o) {
-    var nlp  = (o.nlp_score   || 0).toFixed(2);
-    var sec  = (o.sec_score   || 0).toFixed(2);
-    var pos  = Math.max(0, Math.min(100, (o.positive_ratio || 0) * 100)).toFixed(0);
-    var cls  = o.nlp_score >= 4 ? 'very-positive'
-             : o.nlp_score >= 3 ? 'positive'
-             : o.nlp_score >= 2 ? 'negative'
-             : 'very-negative';
+    var nlp    = (o.nlp_score || 0).toFixed(2);
+    var nlpPct = Math.max(0, Math.min(100, ((o.nlp_score || 0) / 5) * 100)).toFixed(1);
+    var cls    = o.nlp_score >= 4 ? 'very-positive'
+               : o.nlp_score >= 3 ? 'positive'
+               : o.nlp_score >= 2 ? 'negative'
+               : 'very-negative';
 
     var typeLabels = formatTypes(o.types);
     var typeTags   = typeLabels.map(function(t) {
@@ -355,6 +431,22 @@ function restaurantCard(o) {
     var pid  = (o.place_id || '').replace(/'/g, "\\'");
     var name = escHtml(o.name);
 
+    /* Build score columns */
+    var scoreColumns = '<div class="score"><span class="score-value ' + cls + '">' + nlp + '</span><span class="score-label">NLP Score / 5</span></div>';
+
+    if (o.ai_score != null) {
+        /* Recommendations view: AI Score + Google ★ */
+        var ai = Number(o.ai_score).toFixed(2);
+        scoreColumns += '<div class="score" title="0.5×NLP + 0.3×Recency + 0.2×Popularity"><span class="score-value">' + ai + '</span><span class="score-label">AI Score / 5</span></div>';
+        var goog = o.google_rating != null ? Number(o.google_rating).toFixed(1) : 'N/A';
+        scoreColumns += '<div class="score"><span class="score-value">' + goog + '</span><span class="score-label">Google &#9733;</span></div>';
+    } else {
+        /* Search view: Google ★ only */
+        var sec = (o.sec_score || 0).toFixed(2);
+        scoreColumns += '<div class="score" title="' + (o.sec_title || '') + '"><span class="score-value">' + sec + '</span><span class="score-label">' + (o.sec_label || 'Score') + '</span></div>';
+    }
+
+
     return '<div class="restaurant-card" onclick="loadReviews(\'' + pid + '\',\'' + name + '\')">' +
         '<div class="card-header">' +
             '<span class="rank">#' + o.rank + '</span>' +
@@ -364,15 +456,11 @@ function restaurantCard(o) {
             '</div>' +
         '</div>' +
         '<div class="card-body">' +
-            '<div class="score-row">' +
-                '<div class="score"><span class="score-value ' + cls + '">' + nlp + '</span><span class="score-label">NLP Score</span></div>' +
-                '<div class="score"><span class="score-value">' + sec + '</span><span class="score-label">' + (o.sec_label || 'Score') + '</span></div>' +
-                '<div class="score"><span class="score-value">' + o.review_count + '</span><span class="score-label">Reviews</span></div>' +
+            '<div class="score-row">' + scoreColumns + '</div>' +
+            '<div class="sentiment-bar" title="NLP Score ' + nlp + ' / 5">' +
+                '<div class="bar-fill" style="width:' + nlpPct + '%"></div>' +
             '</div>' +
-            '<div class="sentiment-bar" title="' + pos + '% positive">' +
-                '<div class="bar-fill" style="width:' + pos + '%"></div>' +
-            '</div>' +
-            '<div class="bar-label">' + pos + '% positive sentiment</div>' +
+            '<div class="bar-label">NLP Score: ' + nlp + ' / 5</div>' +
         '</div>' +
         '<div class="card-footer">Click to view reviews</div>' +
     '</div>';
@@ -413,7 +501,7 @@ async function loadReviews(placeId, name) {
                     '<span class="review-score ' + cls + '">' + Number(score).toFixed(2) + '</span>' +
                     '<span class="review-sentiment">' + escHtml(r.sentiment_label || '') + '</span>' +
                 '</div>' +
-                '<p class="review-text">' + escHtml(r.text || r.text_cleaned || '&#8212;') + '</p>' +
+                '<p class="review-text">' + escHtml(r.text || r.text_cleaned || '') + '</p>' +
                 '<div class="review-meta">' + escHtml(r.relative_time || r.review_time || '') + '</div>' +
             '</div>';
         }).join('');
@@ -436,17 +524,24 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeReviewsModal();
 });
 
-/* Health */
+/* Health — also populates hero stats */
 async function loadHealthStatus() {
     try {
         const res  = await fetch(API + '/health');
         const data = await res.json();
         const c    = data.collections || {};
+
         document.getElementById('status-text').textContent =
-            'Pipeline ' + data.status + ' | ' +
-            (c.restaurants || 0) + ' restaurants | ' +
-            (c.raw_reviews || 0) + ' raw reviews | ' +
+            'Pipeline ' + data.status + ' · ' +
+            (c.restaurants || 0) + ' restaurants · ' +
+            (c.raw_reviews || 0) + ' raw reviews · ' +
             (c.processed_reviews || 0) + ' processed';
+
+        /* Update hero stats */
+        document.getElementById('stat-restaurants').textContent = (c.restaurants  || 0).toLocaleString();
+        document.getElementById('stat-reviews').textContent     = (c.raw_reviews  || 0).toLocaleString();
+        document.getElementById('stat-processed').textContent   = (c.processed_reviews || 0).toLocaleString();
+
         if (data.status === 'healthy') {
             document.getElementById('status-bar').classList.add('active');
         }
@@ -486,7 +581,7 @@ async function loadAnalytics() {
 
 /* Helpers */
 function setGridLoading() {
-    document.getElementById('restaurant-grid').innerHTML = '<div class="loading">Searching...</div>';
+    document.getElementById('restaurant-grid').innerHTML = '<div class="loading">Searching&#8230;</div>';
     document.getElementById('results-count').textContent = '';
 }
 

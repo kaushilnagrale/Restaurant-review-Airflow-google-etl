@@ -74,7 +74,7 @@ recommendation:
   recency_weight: 0.3
   sentiment_weight: 0.5
   popularity_weight: 0.2
-  top_n: 20
+  top_n: 500
   bayesian_prior_count: 10
   bayesian_prior_mean: 3.0
 
