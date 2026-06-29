@@ -43,6 +43,7 @@ airflow-webserver.pid
 .DS_Store
 Thumbs.db
 
+.claude
 # Notebooks
 .ipynb_checkpoints/
 generate_architecture_pdf.py
