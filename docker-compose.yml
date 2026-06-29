@@ -168,6 +168,8 @@ services:
     container_name: frontend
     ports:
       - "5000:5000"
+    volumes:
+      - ./frontend:/app
     environment:
       - MONGO_URI=mongodb://mongo:27017
       - MONGO_DB=restaurant_reviews

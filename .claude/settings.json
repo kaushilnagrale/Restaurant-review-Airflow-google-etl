@@ -31,7 +31,9 @@
       "PowerShell(Start-Sleep -Seconds 3; $r = Invoke-WebRequest -Uri \"http://localhost:5000\" -UseBasicParsing -TimeoutSec 10; \"Status: $\\($r.StatusCode\\)\"; if \\($r.Content -match 'hero'\\) { \"Hero section found\" } else { \"Hero NOT found\" }; if \\($r.Content -match 'Playfair'\\) { \"Google Fonts found\" } else { \"Fonts NOT found\" })",
       "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:5000/static/style.css\" -UseBasicParsing -TimeoutSec 10; \"Status: $\\($r.StatusCode\\)\"; if \\($r.Content -match 'Playfair Display'\\) { \"Playfair font import: OK\" } else { \"Playfair: MISSING\" }; if \\($r.Content -match 'hero-bg'\\) { \"Hero styles: OK\" } else { \"Hero: MISSING\" }; if \\($r.Content -match 'unsplash'\\) { \"Unsplash photo: OK\" } else { \"Photo: MISSING\" })",
       "PowerShell(docker cp \"c:/Users/kaush/Desktop/Airflow-google-reviews-etl/frontend/app.py\" frontend:/app/app.py)",
-      "PowerShell(Start-Sleep -Seconds 3; $r = Invoke-WebRequest -Uri \"http://localhost:5000\" -UseBasicParsing -TimeoutSec 10; if \\($r.StatusCode -eq 200\\) { \"OK\" } else { \"FAILED: $\\($r.StatusCode\\)\" })"
+      "PowerShell(Start-Sleep -Seconds 3; $r = Invoke-WebRequest -Uri \"http://localhost:5000\" -UseBasicParsing -TimeoutSec 10; if \\($r.StatusCode -eq 200\\) { \"OK\" } else { \"FAILED: $\\($r.StatusCode\\)\" })",
+      "PowerShell(docker-compose up -d --no-deps frontend)",
+      "PowerShell(Start-Sleep -Seconds 3; $r = Invoke-WebRequest -Uri \"http://localhost:5000\" -UseBasicParsing -TimeoutSec 10; \"Status: $\\($r.StatusCode\\)\"; if \\($r.Content -match 'hero'\\) { \"Hero: OK\" }; if \\($r.Content -match 'Kaushil'\\) { \"Name: OK\" }; if \\($r.Content -match 'AI Score'\\) { \"AI Score: OK\" })"
     ]
   }
 }
